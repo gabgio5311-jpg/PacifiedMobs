@@ -22,7 +22,7 @@ Um mod que pacifica monstros e criaturas do Minecraft quando recebem uma Tag com
 Feito para a versão 1.21.1 usando NeoForge!
 '''
 
-# Dependência Obrigatória: NeoForge (Com aspas para corrigir o erro do $)
+# Dependência Obrigatória: NeoForge
 [[dependencies."${mod_id}"]]
 modId="neoforge"
 type="required"
@@ -30,7 +30,7 @@ versionRange="[${neo_version},)"
 ordering="NONE"
 side="BOTH"
 
-# Dependência Obrigatória: Minecraft Base (Com aspas para corrigir o erro do $)
+# Dependência Obrigatória: Minecraft Base
 [[dependencies."${mod_id}"]]
 modId="minecraft"
 type="required"

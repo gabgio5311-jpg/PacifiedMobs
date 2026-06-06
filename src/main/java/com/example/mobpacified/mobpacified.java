@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.example.mobpacified;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -19,7 +19,7 @@ import net.neoforged.neoforge.event.tick.EntityTickEvent;
 import java.util.List;
 
 @EventBusSubscriber(modid = "mobpacified")
-public class ExampleMod {
+public class mobpacified {
 
     // 1. Método que verifica se o mob tem a Name Tag "Amigao"
     private boolean isAmigao(Mob mob) {
@@ -41,7 +41,7 @@ public class ExampleMod {
     @SubscribeEvent
     public void onLivingDamage(LivingDamageEvent.Pre event) {
         if (event.getEntity() instanceof Mob vitima && isAmigao(vitima)) {
-            Entity agressor = event.getSource().getEntity();
+            Entity agressor = event.getSource().getDirectEntity();
 
             // Se o agressor for vivo e NÃO for um Player, pede ajuda aos aliados
             if (agressor instanceof LivingEntity inimigo && !(inimigo instanceof Player)) {
