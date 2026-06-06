@@ -1,4 +1,5 @@
 package com.example.mobpacified;
+
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -20,12 +21,14 @@ import java.util.List;
 public class mobpacified {
 
     // 1. Método que verifica se o mob tem a Name Tag "Amigao"
-    private boolean isAmigao(Mob mob) {
+    // ADICIONADO STATIC AQUI
+    private static boolean isAmigao(Mob mob) {
         return mob.hasCustomName() && mob.getCustomName().getString().equalsIgnoreCase("Amigao");
     }
 
     // 2. Método que limpa completamente a raiva e a memória do Warden
-    private void resetWarden(Mob mob) {
+    // ADICIONADO STATIC AQUI
+    private static void resetWarden(Mob mob) {
         mob.setTarget(null);
         if (mob instanceof Warden warden) {
             warden.clearAnger(null);
@@ -37,7 +40,7 @@ public class mobpacified {
 
     // 3. Evento de Dano (Roda antes do dano ser aplicado)
     @SubscribeEvent
-    public void onLivingDamage(LivingDamageEvent.Pre event) {
+    public static void onLivingDamage(LivingDamageEvent.Pre event) {
         if (event.getEntity() instanceof Mob vitima && isAmigao(vitima)) {
             Entity agressor = event.getSource().getDirectEntity();
 
@@ -59,8 +62,9 @@ public class mobpacified {
     }
 
     // 4. Evento de Tick (Atualizado para o NeoForge 1.21.1)
+    // ADICIONADO STATIC AQUI
     @SubscribeEvent
-    public void onEntityTick(EntityTickEvent.Pre event) {
+    public static void onEntityTick(EntityTickEvent.Pre event) {
         Entity entity = event.getEntity();
 
         if (entity instanceof Mob mob && isAmigao(mob)) {
