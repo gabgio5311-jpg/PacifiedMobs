@@ -4,14 +4,11 @@ plugins {
     id 'net.neoforged.moddev' version '2.0.141'
     id 'idea'
 }
-
 tasks.named('wrapper', Wrapper).configure {
     distributionType = Wrapper.DistributionType.BIN
 }
-
-version = mod_version
-group = mod_group_id
-
+version = "1.0.0"
+group = "com.example.mobpacified"
 sourceSets.main.resources {
     srcDir('src/generated/resources')
     exclude("**/*.bbmodel")
@@ -19,84 +16,73 @@ sourceSets.main.resources {
 }
 
 repositories {
+    mavenCentral()
+    maven { url = uri("https://maven.parchmentmc.org") }
+    maven { url = uri("https://maven.neoforged.net/releases") }
 }
-
 base {
-    archivesName = mod_id
+    archivesName = "mobpacified"
 }
-
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 neoForge {
-    version = project.neo_version
-
+    version = "21.1.35"
     parchment {
-        mappingsVersion = project.parchment_mappings_version
-        minecraftVersion = project.parchment_minecraft_version
+        mappingsVersion = "2024.11.17"
+        minecraftVersion = "1.21.1"
     }
-
     runs {
         client {
             client()
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', "mobpacified"
         }
-
         server {
             server()
             programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', "mobpacified"
         }
-
         gameTestServer {
             type = "gameTestServer"
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', "mobpacified"
         }
-
         data {
             data()
-            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+            programArguments.addAll '--mod', "mobpacified", '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
         }
-
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
             logLevel = org.slf4j.event.Level.DEBUG
         }
     }
-
     mods {
         "${mod_id}" {
             sourceSet(sourceSets.main)
         }
     }
 }
-
 configurations {
     runtimeClasspath.extendsFrom localRuntime
 }
-
 dependencies {
 }
-
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
-            minecraft_version      : minecraft_version,
-            minecraft_version_range: minecraft_version_range,
-            neo_version            : neo_version,
-            loader_version_range   : loader_version_range,
-            mod_id                 : mod_id,
-            mod_name               : mod_name,
-            mod_license            : mod_license,
-            mod_version            : mod_version,
+            minecraft_version : "1.21.1",
+            minecraft_version_range: "[1.21.1,1.22)",
+            neo_version : "21.1.35",
+            loader_version_range : "[1,)",
+            mod_id : "mobpacified",
+            mod_name : "mobpacified",
+            mod_license : "MIT",
+            mod_version : "1.0.0",
     ]
     inputs.properties replaceProperties
     expand replaceProperties
     from "src/main/templates"
     into "build/generated/sources/modMetadata"
 }
-
 sourceSets.main.resources.srcDir generateModMetadata
 neoForge.ideSyncTask generateModMetadata
-
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
@@ -109,11 +95,9 @@ publishing {
         }
     }
 }
-
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
-
 idea {
     module {
         downloadSources = true

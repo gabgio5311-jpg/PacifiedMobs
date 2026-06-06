@@ -1,17 +1,17 @@
 # Tipo do carregador de mods - para NeoForge deve ser javafml
 modLoader="javafml"
 
-# Intervalo de versão do carregador (puxado do gradle.properties)
-loaderVersion="${loader_version_range}"
+# Intervalo de versão do carregador
+loaderVersion="[1,)"
 
 # Licença do seu mod
-license="${mod_license}"
+license="MIT"
 
 # Declaração do bloco do mod
 [[mods]]
-modId="${mod_id}"
-version="${mod_version}"
-displayName="${mod_name}"
+modId="mobpacified"
+version="1.0.0"
+displayName="MobPacified"
 
 # Quem criou o mod
 authors="Gabriel"
@@ -23,17 +23,17 @@ Feito para a versão 1.21.1 usando NeoForge!
 '''
 
 # Dependência Obrigatória: NeoForge
-[[dependencies."${mod_id}"]]
+[[dependencies.mobpacified]]
 modId="neoforge"
 type="required"
-versionRange="[${neo_version},)"
+versionRange="[21,)"
 ordering="NONE"
 side="BOTH"
 
 # Dependência Obrigatória: Minecraft Base
-[[dependencies."${mod_id}"]]
+[[dependencies.mobpacified]]
 modId="minecraft"
 type="required"
-versionRange="${minecraft_version_range}"
+versionRange="[1.21.1,1.22)"
 ordering="NONE"
 side="BOTH"
