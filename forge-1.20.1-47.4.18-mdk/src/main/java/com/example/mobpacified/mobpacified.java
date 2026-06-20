@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.example.mobpacified;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -16,7 +16,7 @@ import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
 import net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent;
 
 @Mod.EventBusSubscriber(modid = "mobpacified")
-public class ExampleMod {
+public class mobpacified {
 
     private static boolean isAmigao(Mob mob) {
         if (mob.hasCustomName()) {
