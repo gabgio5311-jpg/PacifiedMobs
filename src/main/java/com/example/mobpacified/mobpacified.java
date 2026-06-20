@@ -1,4 +1,5 @@
 package com.example.mobpacified;
+
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -16,10 +17,19 @@ import net.neoforged.neoforge.event.tick.EntityTickEvent;
 public class mobpacified {
 
     private static boolean isAmigao(Mob mob) {
-        return mob.hasCustomName() && mob.getCustomName().getString().equalsIgnoreCase("Amigao");
+        // Verifica se tem nome customizado
+        if (mob.hasCustomName()) {
+            // Pega o nome em formato de texto simples e converte para minúsculo
+            String nome = mob.getCustomName().getString().toLowerCase();
+
+            // Se o nome CONTÉM a palavra "amigao" (ignora aspas, espaços, etc)
+            if (nome.contains("amigao")) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    // CORREÇÃO: Usamos getOriginalTarget() e setNewTarget() que existem na versão atual
     @SubscribeEvent
     public static void onTargetChange(LivingChangeTargetEvent event) {
         if (event.getEntity() instanceof Mob mob && isAmigao(mob)) {
@@ -47,21 +57,32 @@ public class mobpacified {
         }
     }
 
+    // CORREÇÃO: Mudamos de .Pre para .Post para rodar DEPOIS da IA teimosa do mod
     @SubscribeEvent
-    public static void onEntityTick(EntityTickEvent.Pre event) {
+    public static void onEntityTick(EntityTickEvent.Post event) {
         Entity entity = event.getEntity();
 
         if (entity instanceof Mob mob && isAmigao(mob)) {
+
+            // Se mesmo assim o mob tentou focar em alguém no turno dele, a gente zera e trava a perna dele
+            if (mob.getTarget() != null) {
+                mob.setTarget(null);
+                mob.getNavigation().stop(); // Força o mob a parar de andar na direção do alvo
+            }
+
             mob.setAggressive(false);
+            mob.setLastHurtByMob(null);
+
+            // Limpa as memórias genéricas de ataque
+            if (mob.getBrain().hasMemoryValue(MemoryModuleType.ATTACK_TARGET)) {
+                mob.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
+            }
+            if (mob.getBrain().hasMemoryValue(MemoryModuleType.ANGRY_AT)) {
+                mob.getBrain().eraseMemory(MemoryModuleType.ANGRY_AT);
+            }
 
             if (mob instanceof Warden warden) {
-                warden.setTarget(null);
-                warden.setAggressive(false);
-
                 warden.clearAnger(null);
-
-                warden.getBrain().eraseMemory(MemoryModuleType.ANGRY_AT);
-                warden.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
                 warden.getBrain().eraseMemory(MemoryModuleType.ROAR_TARGET);
                 warden.getBrain().eraseMemory(MemoryModuleType.ROAR_SOUND_DELAY);
                 warden.getBrain().eraseMemory(MemoryModuleType.IS_PANICKING);
