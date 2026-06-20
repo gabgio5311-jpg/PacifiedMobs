@@ -15,6 +15,7 @@ import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
 import net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent;
 
+@Mod("mobpacified")
 @Mod.EventBusSubscriber(modid = "mobpacified")
 public class mobpacified {
 

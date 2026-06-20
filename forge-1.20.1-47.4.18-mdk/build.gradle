@@ -29,7 +29,7 @@ minecraft {
             property 'forge.logging.console.level', 'debug'
 
             mods {
-                "mobpacifier" {
+                "mobpacified" {
                     source sourceSets.main
                 }
             }
