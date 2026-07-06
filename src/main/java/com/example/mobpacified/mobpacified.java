@@ -159,13 +159,19 @@ public class mobpacified {
                     creeper.setSwellDir(-1);
                 }
             }
-
+            
             // Wither: as cabeças laterais miram sozinhas (alvos alternativos),
             // então zerar getTarget() não basta. Limpamos os dois alvos das cabeças
             // (id 0 = sem alvo) pra ele parar de atirar crânios nos mobs.
             if (mob instanceof WitherBoss wither) {
                 wither.setAlternativeTarget(1, 0);
                 wither.setAlternativeTarget(2, 0);
+                // O som do disparo é um level event que só toca se o mob não for
+                // silencioso. Silenciando o Wither, some o barulho de atirar
+                // (e os demais sons dele) — o crânio já é cancelado ao nascer.
+                if (!wither.isSilent()) {
+                    wither.setSilent(true);
+                }
             }
 
             // Modo "seguir": anda até o dono enquanto o estado estiver ativo
