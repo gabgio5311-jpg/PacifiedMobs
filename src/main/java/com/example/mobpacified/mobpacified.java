@@ -4,7 +4,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.monster.Creeper;
+import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.monster.warden.Warden;
+import net.minecraft.world.entity.projectile.WitherSkull;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.InteractionHand;
@@ -16,6 +18,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 import java.util.UUID;
@@ -85,6 +88,20 @@ public class mobpacified {
         }
     }
 
+    // As cabeças laterais do Wither miram alvos aleatórios sozinhas e atiram no
+    // mesmo tick, antes do nosso .Post limpar os alvos. Então, em vez de brigar
+    // com a mira, cancelamos o próprio crânio ao nascer: se o dono é um amigão,
+    // o projétil nunca entra no mundo (não voa nem explode).
+    @SubscribeEvent
+    public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
+        if (event.getLevel().isClientSide) return;
+
+        if (event.getEntity() instanceof WitherSkull skull
+                && skull.getOwner() instanceof Mob dono && isAmigao(dono)) {
+            event.setCanceled(true);
+        }
+    }
+
     @SubscribeEvent
     public static void onLivingIncomingDamage(LivingIncomingDamageEvent event) {
         Entity agressor = event.getSource().getEntity();
@@ -141,6 +158,14 @@ public class mobpacified {
                 if (creeper.getSwellDir() > 0) {
                     creeper.setSwellDir(-1);
                 }
+            }
+
+            // Wither: as cabeças laterais miram sozinhas (alvos alternativos),
+            // então zerar getTarget() não basta. Limpamos os dois alvos das cabeças
+            // (id 0 = sem alvo) pra ele parar de atirar crânios nos mobs.
+            if (mob instanceof WitherBoss wither) {
+                wither.setAlternativeTarget(1, 0);
+                wither.setAlternativeTarget(2, 0);
             }
 
             // Modo "seguir": anda até o dono enquanto o estado estiver ativo
