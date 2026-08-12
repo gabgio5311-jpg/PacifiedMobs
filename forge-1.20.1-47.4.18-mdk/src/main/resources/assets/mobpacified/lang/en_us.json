@@ -1,0 +1,7 @@
+{
+  "itemGroup.mobpacified": "Mob Pacified",
+  "item.mobpacified.mystic_amulet": "Mystic Amulet",
+  "item.mobpacified.mystic_amulet.tooltip.pacify": "Right-click a hostile mob to pacify it forever",
+  "item.mobpacified.mystic_amulet.tooltip.follow": "Sneak + right-click a pacified mob to toggle following",
+  "item.mobpacified.mystic_amulet.tooltip.consumed": "Consumed on use"
+}
