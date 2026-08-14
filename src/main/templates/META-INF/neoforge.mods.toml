@@ -2,38 +2,35 @@
 modLoader="javafml"
 
 # Intervalo de versão do carregador
-loaderVersion="[1,)"
+loaderVersion="${loader_version_range}"
 
 # Licença do seu mod
-license="MIT"
+license="${mod_license}"
 
 # Declaração do bloco do mod
 [[mods]]
-modId="mobpacified"
-version="1.0.0"
-displayName="MobPacified"
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
 
 # Quem criou o mod
-authors="Gabriel"
+authors="${mod_authors}"
 
 # A descrição do seu mod
-description='''
-Um mod que pacifica monstros e criaturas do Minecraft quando recebem uma Tag com o nome de 'Amigao'.
-Feito para a versão 1.21.1 usando NeoForge!
-'''
+description='''${mod_description}'''
 
 # Dependência Obrigatória: NeoForge
-[[dependencies.mobpacified]]
+[[dependencies.${mod_id}]]
 modId="neoforge"
 type="required"
-versionRange="[21,)"
+versionRange="${neo_version_range}"
 ordering="NONE"
 side="BOTH"
 
 # Dependência Obrigatória: Minecraft Base
-[[dependencies.mobpacified]]
+[[dependencies.${mod_id}]]
 modId="minecraft"
 type="required"
-versionRange="[1.21.1,1.22)"
+versionRange="${minecraft_version_range}"
 ordering="NONE"
 side="BOTH"

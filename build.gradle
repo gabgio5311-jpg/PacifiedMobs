@@ -7,8 +7,12 @@ plugins {
 tasks.named('wrapper', Wrapper).configure {
     distributionType = Wrapper.DistributionType.BIN
 }
-version = "1.0.0"
-group = "com.example.mobpacified"
+
+// Toda a identidade do mod vem do gradle.properties (fonte unica de verdade).
+// Nada de id/versao hardcoded aqui embaixo.
+version = mod_version
+group = mod_group_id
+
 sourceSets.main.resources {
     srcDir('src/generated/resources')
     exclude("**/*.bbmodel")
@@ -21,33 +25,33 @@ repositories {
     maven { url = uri("https://maven.neoforged.net/releases") }
 }
 base {
-    archivesName = "mobpacified"
+    archivesName = mod_id
 }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 neoForge {
-    version = "21.1.35"
+    version = neo_version
     parchment {
-        mappingsVersion = "2024.11.17"
-        minecraftVersion = "1.21.1"
+        mappingsVersion = parchment_mappings_version
+        minecraftVersion = parchment_minecraft_version
     }
     runs {
         client {
             client()
-            systemProperty 'neoforge.enabledGameTestNamespaces', "mobpacified"
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
         }
         server {
             server()
             programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', "mobpacified"
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
         }
         gameTestServer {
             type = "gameTestServer"
-            systemProperty 'neoforge.enabledGameTestNamespaces', "mobpacified"
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
         }
         data {
             data()
-            programArguments.addAll '--mod', "mobpacified", '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+            programArguments.addAll '--mod', mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
         }
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
@@ -67,14 +71,17 @@ dependencies {
 }
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
-            minecraft_version : "1.21.1",
-            minecraft_version_range: "[1.21.1,1.22)",
-            neo_version : "21.1.35",
-            loader_version_range : "[1,)",
-            mod_id : "mobpacified",
-            mod_name : "mobpacified",
-            mod_license : "MIT",
-            mod_version : "1.0.0",
+            minecraft_version : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version : neo_version,
+            neo_version_range : neo_version_range,
+            loader_version_range : loader_version_range,
+            mod_id : mod_id,
+            mod_name : mod_name,
+            mod_license : mod_license,
+            mod_version : mod_version,
+            mod_authors : mod_authors,
+            mod_description : mod_description,
     ]
     inputs.properties replaceProperties
     expand replaceProperties
