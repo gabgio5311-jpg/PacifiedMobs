@@ -1,4 +1,4 @@
-package com.example.mobpacified;
+package com.gabriel.mobpacified;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -202,19 +202,13 @@ public class mobpacified {
         }
     }
 
-    // CORRIGIDO: Usando LivingAttackEvent em vez de LivingIncomingDamageEvent
+    // Mob pacificado nao causa dano em ninguem. Ele continua levando dano
+    // normalmente, como qualquer outro mob.
     @SubscribeEvent
     public static void onLivingAttack(LivingAttackEvent event) {
         Entity agressor = event.getSource().getEntity();
 
         if (agressor instanceof Mob mobAgressor && isPacified(mobAgressor)) {
-            event.setCanceled(true);
-            return;
-        }
-
-        // Só protege de dano causado por outra entidade. Sem esta checagem o mob
-        // pacificado ficaria imune até a queda, fogo, lava e void — virando imortal.
-        if (agressor != null && event.getEntity() instanceof Mob vitima && isPacified(vitima)) {
             event.setCanceled(true);
         }
     }

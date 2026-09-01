@@ -1,4 +1,4 @@
-package com.example.mobpacified;
+package com.gabriel.mobpacified;
 
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.DeferredRegister;

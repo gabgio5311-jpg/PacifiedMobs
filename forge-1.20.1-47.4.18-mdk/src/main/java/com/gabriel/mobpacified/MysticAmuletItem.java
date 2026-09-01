@@ -1,4 +1,4 @@
-package com.example.mobpacified;
+package com.gabriel.mobpacified;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
