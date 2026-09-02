@@ -32,9 +32,9 @@ import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
 import net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 
-@Mod(mobpacified.MOD_ID)
-@Mod.EventBusSubscriber(modid = mobpacified.MOD_ID)
-public class mobpacified {
+@Mod(MobPacified.MOD_ID)
+@Mod.EventBusSubscriber(modid = MobPacified.MOD_ID)
+public class MobPacified {
 
     public static final String MOD_ID = "mobpacified";
 
@@ -46,7 +46,7 @@ public class mobpacified {
     // Sem este construtor os DeferredRegister nunca entram no mod event bus
     // e o item/aba criativa não chegam a existir no jogo.
     // O contexto é injetado pelo FML (FMLJavaModLoadingContext.get() está depreciado).
-    public mobpacified(FMLJavaModLoadingContext context) {
+    public MobPacified(FMLJavaModLoadingContext context) {
         IEventBus modEventBus = context.getModEventBus();
         ModItems.ITEMS.register(modEventBus);
         ModCreativeTab.CREATIVE_TABS.register(modEventBus);

@@ -11,7 +11,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 // O comportamento do amuleto fica no handler de PlayerInteractEvent.EntityInteract
-// (em mobpacified.java), porque o evento roda antes do interact do mob.
+// (em MobPacified.java), porque o evento roda antes do interact do mob.
 // Esta classe existe só para a tooltip.
 public class MysticAmuletItem extends Item {
 
