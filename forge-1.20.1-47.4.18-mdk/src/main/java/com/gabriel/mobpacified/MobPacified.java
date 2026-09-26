@@ -5,9 +5,11 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.warden.Warden;
+import net.minecraft.world.entity.projectile.WitherSkull;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.InteractionHand;
@@ -27,6 +29,10 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.EntityMobGriefingEvent;
+import net.minecraftforge.event.level.ExplosionEvent;
+import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
 import net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent;
@@ -53,7 +59,7 @@ public class MobPacified {
     }
 
     // Um mob é controlado por este mod quando foi marcado pelo Amuleto Místico.
-    private static boolean isPacified(Mob mob) {
+    static boolean isPacified(Mob mob) {
         return mob.getPersistentData().getBoolean(TAG_PACIFIED);
     }
 
@@ -153,19 +159,7 @@ public class MobPacified {
         }
 
         if (mob instanceof Warden warden) {
-            warden.getBrain().eraseMemory(MemoryModuleType.ROAR_TARGET);
-            warden.getBrain().eraseMemory(MemoryModuleType.ROAR_SOUND_DELAY);
-            warden.getBrain().eraseMemory(MemoryModuleType.IS_PANICKING);
-
-            // clearAnger(null) não limpava nada: a ira do Warden é guardada por
-            // suspeito, então é preciso zerar entidade por entidade.
-            warden.level().getEntitiesOfClass(LivingEntity.class,
-                    warden.getBoundingBox().inflate(24.0D)).forEach(alvo -> {
-                warden.clearAnger(alvo);
-                if (alvo instanceof Player p && p.hasEffect(MobEffects.DARKNESS)) {
-                    p.removeEffect(MobEffects.DARKNESS);
-                }
-            });
+            acalmarWarden(warden, null);
         }
 
         if (mob instanceof Creeper creeper) {
@@ -173,6 +167,41 @@ public class MobPacified {
                 creeper.setSwellDir(-1);
             }
         }
+
+        // Wither: as cabeças laterais miram sozinhas (alvos alternativos),
+        // então zerar getTarget() não basta. Limpamos os dois alvos das cabeças
+        // (id 0 = sem alvo) pra ele parar de atirar crânios nos mobs.
+        if (mob instanceof WitherBoss wither) {
+            wither.setAlternativeTarget(1, 0);
+            wither.setAlternativeTarget(2, 0);
+            // O som do disparo é um level event que só toca se o mob não for
+            // silencioso. Silenciando o Wither, some o barulho de atirar
+            // (e os demais sons dele) — o crânio já é cancelado ao nascer.
+            if (!wither.isSilent()) {
+                wither.setSilent(true);
+            }
+        }
+    }
+
+    // Tira a raiva do Warden de todo mundo em volta, menos de "exceto"
+    // (o alvo da mente colmeia, quando há um). Também corta o rugido, que o
+    // deixa parado, e a escuridão que ele joga nos jogadores.
+    static void acalmarWarden(Warden warden, LivingEntity exceto) {
+        warden.getBrain().eraseMemory(MemoryModuleType.ROAR_TARGET);
+        warden.getBrain().eraseMemory(MemoryModuleType.ROAR_SOUND_DELAY);
+        warden.getBrain().eraseMemory(MemoryModuleType.IS_PANICKING);
+
+        // clearAnger(null) não limpava nada: a ira do Warden é guardada por
+        // suspeito, então é preciso zerar entidade por entidade.
+        warden.level().getEntitiesOfClass(LivingEntity.class,
+                warden.getBoundingBox().inflate(24.0D)).forEach(alvo -> {
+            if (alvo != exceto) {
+                warden.clearAnger(alvo);
+            }
+            if (alvo instanceof Player p && p.hasEffect(MobEffects.DARKNESS)) {
+                p.removeEffect(MobEffects.DARKNESS);
+            }
+        });
     }
 
     private static void alternarSeguir(Player player, Mob mob) {
@@ -191,24 +220,59 @@ public class MobPacified {
         }
     }
 
+    // Pacificado só pode mirar no alvo que a mente colmeia deu.
+    // Os outros mobs podem mirar nos pacificados: é atacando um deles que a
+    // mente colmeia é chamada pra defender.
     @SubscribeEvent
     public static void onTargetChange(LivingChangeTargetEvent event) {
-        if (event.getEntity() instanceof Mob mob && isPacified(mob)) {
-            event.setNewTarget(null);
-        }
-
-        if (event.getOriginalTarget() instanceof Mob vitima && isPacified(vitima)) {
+        if (event.getEntity() instanceof Mob mob && isPacified(mob)
+                && !MenteColmeia.ehAlvoDaColmeia(mob, event.getNewTarget())) {
             event.setNewTarget(null);
         }
     }
 
-    // Mob pacificado nao causa dano em ninguem. Ele continua levando dano
-    // normalmente, como qualquer outro mob.
+    // As cabeças laterais do Wither miram alvos aleatórios sozinhas e atiram antes
+    // do nosso tick limpar os alvos. Então, em vez de brigar com a mira,
+    // cancelamos o próprio crânio ao nascer: se o dono é pacificado, o projétil
+    // nunca entra no mundo (não voa nem explode).
+    // A exceção é o Wither convocado pela mente colmeia: esse pode atirar.
+    @SubscribeEvent
+    public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
+        if (event.getLevel().isClientSide) return;
+
+        if (event.getEntity() instanceof WitherSkull skull
+                && skull.getOwner() instanceof Mob dono && isPacified(dono)
+                && MenteColmeia.alvoAtual(dono) == null) {
+            event.setCanceled(true);
+        }
+    }
+
+    // Crânio de Wither pacificado (o da mente colmeia) não quebra blocos.
+    // O dano da explosão já é filtrado pelo onLivingAttack: só o alvo apanha.
+    @SubscribeEvent
+    public static void onExplosionDetonate(ExplosionEvent.Detonate event) {
+        if (event.getExplosion().getDirectSourceEntity() instanceof WitherSkull skull
+                && skull.getOwner() instanceof Mob dono && isPacified(dono)) {
+            event.getAffectedBlocks().clear();
+        }
+    }
+
+    // O Wither quebra os blocos em volta quando apanha. Pacificado, não quebra.
+    @SubscribeEvent
+    public static void onMobGriefing(EntityMobGriefingEvent event) {
+        if (event.getEntity() instanceof WitherBoss wither && isPacified(wither)) {
+            event.setResult(Event.Result.DENY);
+        }
+    }
+
+    // Mob pacificado nao causa dano em ninguem, exceto no alvo da mente colmeia.
+    // Ele continua levando dano normalmente, como qualquer outro mob.
     @SubscribeEvent
     public static void onLivingAttack(LivingAttackEvent event) {
         Entity agressor = event.getSource().getEntity();
 
-        if (agressor instanceof Mob mobAgressor && isPacified(mobAgressor)) {
+        if (agressor instanceof Mob mobAgressor && isPacified(mobAgressor)
+                && !MenteColmeia.ehAlvoDaColmeia(mobAgressor, event.getEntity())) {
             event.setCanceled(true);
         }
     }
@@ -220,6 +284,13 @@ public class MobPacified {
         if (entity.level().isClientSide) return;
 
         if (entity instanceof Mob mob && isPacified(mob)) {
+
+            // Convocado pela mente colmeia: ataca e não segue o dono até acabar
+            LivingEntity alvoColmeia = MenteColmeia.alvoAtual(mob);
+            if (alvoColmeia != null) {
+                MenteColmeia.atacar(mob, alvoColmeia);
+                return;
+            }
 
             limparAgressividade(mob);
 
