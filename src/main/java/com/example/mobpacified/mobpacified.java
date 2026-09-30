@@ -30,6 +30,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.EntityMobGriefingEvent;
+import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -55,7 +57,7 @@ public class mobpacified {
     }
 
     // Um mob é controlado por este mod quando foi marcado pelo Amuleto Místico.
-    private static boolean isPacified(Mob mob) {
+    static boolean isPacified(Mob mob) {
         return mob.getPersistentData().getBoolean(TAG_PACIFIED);
     }
 
@@ -155,19 +157,7 @@ public class mobpacified {
         }
 
         if (mob instanceof Warden warden) {
-            warden.getBrain().eraseMemory(MemoryModuleType.ROAR_TARGET);
-            warden.getBrain().eraseMemory(MemoryModuleType.ROAR_SOUND_DELAY);
-            warden.getBrain().eraseMemory(MemoryModuleType.IS_PANICKING);
-
-            // clearAnger(null) não limpava nada: a ira do Warden é guardada por
-            // suspeito, então é preciso zerar entidade por entidade.
-            warden.level().getEntitiesOfClass(LivingEntity.class,
-                    warden.getBoundingBox().inflate(24.0D)).forEach(alvo -> {
-                warden.clearAnger(alvo);
-                if (alvo instanceof Player p && p.hasEffect(MobEffects.DARKNESS)) {
-                    p.removeEffect(MobEffects.DARKNESS);
-                }
-            });
+            acalmarWarden(warden, null);
         }
 
         if (mob instanceof Creeper creeper) {
@@ -191,6 +181,27 @@ public class mobpacified {
         }
     }
 
+    // Tira a raiva do Warden de todo mundo em volta, menos de "exceto"
+    // (o alvo da mente colmeia, quando há um). Também corta o rugido, que o
+    // deixa parado, e a escuridão que ele joga nos jogadores.
+    static void acalmarWarden(Warden warden, LivingEntity exceto) {
+        warden.getBrain().eraseMemory(MemoryModuleType.ROAR_TARGET);
+        warden.getBrain().eraseMemory(MemoryModuleType.ROAR_SOUND_DELAY);
+        warden.getBrain().eraseMemory(MemoryModuleType.IS_PANICKING);
+
+        // clearAnger(null) não limpava nada: a ira do Warden é guardada por
+        // suspeito, então é preciso zerar entidade por entidade.
+        warden.level().getEntitiesOfClass(LivingEntity.class,
+                warden.getBoundingBox().inflate(24.0D)).forEach(alvo -> {
+            if (alvo != exceto) {
+                warden.clearAnger(alvo);
+            }
+            if (alvo instanceof Player p && p.hasEffect(MobEffects.DARKNESS)) {
+                p.removeEffect(MobEffects.DARKNESS);
+            }
+        });
+    }
+
     private static void alternarSeguir(Player player, Mob mob) {
         CompoundTag data = mob.getPersistentData();
         boolean seguindo = !data.getBoolean(TAG_FOLLOWING);
@@ -207,16 +218,20 @@ public class mobpacified {
         }
     }
 
-    // NEOFORGE 1.21.1: setNewAboutToBeSetTarget / getOriginalAboutToBeSetTarget
-    // (no Forge 1.20.1 eram setNewTarget / getOriginalTarget)
+    // Pacificado só pode mirar no alvo que a mente colmeia deu.
+    // Os outros mobs podem mirar nos pacificados: é atacando um deles que a
+    // mente colmeia é chamada pra defender.
+    // CANCELA o evento em vez de trocar o alvo por null: mob com cérebro
+    // (piglin, piglin bruto, hoglin) grava o novo alvo com Optional.of() no
+    // StartAttacking, e null ali derruba o mundo. Cancelado, ele não grava nada.
+    // Alvo null (alguém limpando o alvo) passa direto.
+    // NEOFORGE 1.21.1: getNewAboutToBeSetTarget (no Forge 1.20.1 era getNewTarget)
     @SubscribeEvent
     public static void onTargetChange(LivingChangeTargetEvent event) {
-        if (event.getEntity() instanceof Mob mob && isPacified(mob)) {
-            event.setNewAboutToBeSetTarget(null);
-        }
-
-        if (event.getOriginalAboutToBeSetTarget() instanceof Mob vitima && isPacified(vitima)) {
-            event.setNewAboutToBeSetTarget(null);
+        if (event.getNewAboutToBeSetTarget() != null
+                && event.getEntity() instanceof Mob mob && isPacified(mob)
+                && !MenteColmeia.ehAlvoDaColmeia(mob, event.getNewAboutToBeSetTarget())) {
+            event.setCanceled(true);
         }
     }
 
@@ -224,29 +239,46 @@ public class mobpacified {
     // mesmo tick, antes do nosso .Post limpar os alvos. Então, em vez de brigar
     // com a mira, cancelamos o próprio crânio ao nascer: se o dono é pacificado,
     // o projétil nunca entra no mundo (não voa nem explode).
+    // A exceção é o Wither convocado pela mente colmeia: esse pode atirar.
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
         if (event.getLevel().isClientSide) return;
 
         if (event.getEntity() instanceof WitherSkull skull
-                && skull.getOwner() instanceof Mob dono && isPacified(dono)) {
+                && skull.getOwner() instanceof Mob dono && isPacified(dono)
+                && MenteColmeia.alvoAtual(dono) == null) {
             event.setCanceled(true);
         }
     }
 
+    // Crânio de Wither pacificado (o da mente colmeia) não quebra blocos.
+    // O dano da explosão já é filtrado pelo onLivingIncomingDamage: só o alvo apanha.
+    @SubscribeEvent
+    public static void onExplosionDetonate(ExplosionEvent.Detonate event) {
+        if (event.getExplosion().getDirectSourceEntity() instanceof WitherSkull skull
+                && skull.getOwner() instanceof Mob dono && isPacified(dono)) {
+            event.getAffectedBlocks().clear();
+        }
+    }
+
+    // O Wither quebra os blocos em volta quando apanha. Pacificado, não quebra.
+    // NEOFORGE 1.21.1: setCanGrief (no Forge 1.20.1 era setResult(DENY))
+    @SubscribeEvent
+    public static void onMobGriefing(EntityMobGriefingEvent event) {
+        if (event.getEntity() instanceof WitherBoss wither && isPacified(wither)) {
+            event.setCanGrief(false);
+        }
+    }
+
+    // Mob pacificado nao causa dano em ninguem, exceto no alvo da mente colmeia.
+    // Ele continua levando dano normalmente, como qualquer outro mob.
     // NEOFORGE 1.21.1: LivingIncomingDamageEvent (no Forge 1.20.1 era LivingAttackEvent)
     @SubscribeEvent
     public static void onLivingIncomingDamage(LivingIncomingDamageEvent event) {
         Entity agressor = event.getSource().getEntity();
 
-        if (agressor instanceof Mob mobAgressor && isPacified(mobAgressor)) {
-            event.setCanceled(true);
-            return;
-        }
-
-        // Só protege de dano causado por outra entidade. Sem esta checagem o mob
-        // pacificado ficaria imune até a queda, fogo, lava e void — virando imortal.
-        if (agressor != null && event.getEntity() instanceof Mob vitima && isPacified(vitima)) {
+        if (agressor instanceof Mob mobAgressor && isPacified(mobAgressor)
+                && !MenteColmeia.ehAlvoDaColmeia(mobAgressor, event.getEntity())) {
             event.setCanceled(true);
         }
     }
@@ -260,6 +292,13 @@ public class mobpacified {
         if (entity.level().isClientSide) return;
 
         if (entity instanceof Mob mob && isPacified(mob)) {
+
+            // Convocado pela mente colmeia: ataca e não segue o dono até acabar
+            LivingEntity alvoColmeia = MenteColmeia.alvoAtual(mob);
+            if (alvoColmeia != null) {
+                MenteColmeia.atacar(mob, alvoColmeia);
+                return;
+            }
 
             limparAgressividade(mob);
 
