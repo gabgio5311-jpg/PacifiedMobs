@@ -223,11 +223,16 @@ public class MobPacified {
     // Pacificado só pode mirar no alvo que a mente colmeia deu.
     // Os outros mobs podem mirar nos pacificados: é atacando um deles que a
     // mente colmeia é chamada pra defender.
+    // CANCELA o evento em vez de trocar o alvo por null: mob com cérebro
+    // (piglin, piglin bruto, hoglin) grava o novo alvo com Optional.of() no
+    // StartAttacking, e null ali derruba o mundo. Cancelado, ele não grava nada.
+    // Alvo null (alguém limpando o alvo) passa direto.
     @SubscribeEvent
     public static void onTargetChange(LivingChangeTargetEvent event) {
-        if (event.getEntity() instanceof Mob mob && isPacified(mob)
+        if (event.getNewTarget() != null
+                && event.getEntity() instanceof Mob mob && isPacified(mob)
                 && !MenteColmeia.ehAlvoDaColmeia(mob, event.getNewTarget())) {
-            event.setNewTarget(null);
+            event.setCanceled(true);
         }
     }
 
