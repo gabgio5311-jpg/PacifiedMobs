@@ -72,6 +72,7 @@ public class MenteColmeia {
         alvo.level().getEntitiesOfClass(Mob.class,
                 centro.getBoundingBox().inflate(RAIO_CONVOCACAO),
                 mob -> mob != alvo && MobPacified.isPacified(mob) && podeParticipar(mob)
+                        && !MobPacified.domesticadoDoMesmoDono(mob, alvo)
         ).forEach(mob -> {
             boolean novo = !ehAlvoDaColmeia(mob, alvo);
 
@@ -90,6 +91,8 @@ public class MenteColmeia {
     }
 
     // A colmeia só mira em mobs: jogadores e outros pacificados ficam de fora.
+    // Domesticado do mesmo dono também, mas isso é por mob (cada pacificado tem
+    // seu dono): ver domesticadoDoMesmoDono no convocar e no alvoAtual.
     private static boolean podeSerAlvo(LivingEntity alvo) {
         if (!alvo.isAlive() || alvo instanceof Player) return false;
         return !(alvo instanceof Mob mob && MobPacified.isPacified(mob));
@@ -119,6 +122,7 @@ public class MenteColmeia {
 
         boolean valido = alvo != null
                 && podeSerAlvo(alvo)
+                && !MobPacified.domesticadoDoMesmoDono(mob, alvo)
                 && mob.level().getGameTime() <= data.getLong(TAG_ATE)
                 && mob.distanceTo(alvo) <= DISTANCIA_MAXIMA;
 

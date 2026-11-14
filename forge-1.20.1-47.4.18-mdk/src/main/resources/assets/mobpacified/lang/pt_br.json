@@ -1,7 +1,12 @@
 {
   "itemGroup.mobpacified": "Mob Pacified",
   "item.mobpacified.mystic_amulet": "Amuleto Místico",
-  "item.mobpacified.mystic_amulet.tooltip.pacify": "Clique direito num mob hostil para pacificá-lo para sempre",
+  "item.mobpacified.mystic_amulet.tooltip.pacify": "Clique direito num mob hostil ou neutro para pacificá-lo para sempre",
   "item.mobpacified.mystic_amulet.tooltip.follow": "Shift + clique direito num mob pacificado alterna o seguir",
-  "item.mobpacified.mystic_amulet.tooltip.consumed": "Consumido ao usar"
+  "item.mobpacified.mystic_amulet.tooltip.consumed": "Consumido ao usar",
+  "message.mobpacified.already_pacified": "%s já está pacificado.",
+  "message.mobpacified.not_hostile": "%s não é um mob hostil nem neutro.",
+  "message.mobpacified.pacified": "%s foi pacificado!",
+  "message.mobpacified.following": "%s está te seguindo!",
+  "message.mobpacified.stopped_following": "%s parou de te seguir."
 }

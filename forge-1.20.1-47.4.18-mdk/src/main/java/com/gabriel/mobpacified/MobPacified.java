@@ -4,6 +4,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.NeutralMob;
+import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.monster.Creeper;
@@ -48,6 +49,8 @@ public class MobPacified {
     private static final String TAG_PACIFIED = "mobpacified_pacified";
     private static final String TAG_FOLLOWING = "mobpacified_following";
     private static final String TAG_OWNER = "mobpacified_owner";
+    // Quem gastou o amuleto. Diferente do TAG_OWNER, não some quando o mob para de seguir.
+    private static final String TAG_PACIFICADOR = "mobpacified_pacifier";
 
     // Sem este construtor os DeferredRegister nunca entram no mod event bus
     // e o item/aba criativa não chegam a existir no jogo.
@@ -61,6 +64,30 @@ public class MobPacified {
     // Um mob é controlado por este mod quando foi marcado pelo Amuleto Místico.
     static boolean isPacified(Mob mob) {
         return mob.getPersistentData().getBoolean(TAG_PACIFIED);
+    }
+
+    // Mob domesticado: lobo, gato, papagaio, cavalo e qualquer mob de outro mod
+    // que tenha dono (OwnableEntity). Domesticado e pacificado do MESMO dono não
+    // brigam entre si; de donos diferentes, brigam normalmente.
+
+    // Dono do pacificado: quem gastou o amuleto. Mob pacificado antes da 5.2.0
+    // não tem essa marca; aí vale quem ele está seguindo. Sem nenhum dos dois, null.
+    static UUID donoDoPacificado(Mob mob) {
+        CompoundTag data = mob.getPersistentData();
+        if (data.hasUUID(TAG_PACIFICADOR)) return data.getUUID(TAG_PACIFICADOR);
+        if (data.hasUUID(TAG_OWNER)) return data.getUUID(TAG_OWNER);
+        return null;
+    }
+
+    // O domesticado é do mesmo dono que o pacificado? Pacificado sem dono
+    // conhecido (antigo e que nunca seguiu ninguém) protege todo domesticado,
+    // como na 5.2.0 — melhor poupar o lobo de alguém do que atacar o seu.
+    static boolean domesticadoDoMesmoDono(Mob pacificado, Entity entity) {
+        if (!(entity instanceof OwnableEntity domesticado) || domesticado.getOwnerUUID() == null) {
+            return false;
+        }
+        UUID dono = donoDoPacificado(pacificado);
+        return dono == null || dono.equals(domesticado.getOwnerUUID());
     }
 
     // Só faz sentido gastar um amuleto em quem pode ser hostil:
@@ -92,29 +119,28 @@ public class MobPacified {
         ItemStack stack = player.getItemInHand(InteractionHand.MAIN_HAND);
         if (!stack.is(ModItems.MYSTIC_AMULET.get())) return;
 
-        String nome = mob.getName().getString();
-
         if (isPacified(mob)) {
-            player.sendSystemMessage(Component.literal(nome + " já está pacificado."));
+            player.sendSystemMessage(Component.translatable("message.mobpacified.already_pacified", mob.getName()));
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);
             return;
         }
 
         if (!podeSerPacificado(mob)) {
-            player.sendSystemMessage(Component.literal(nome + " não é um mob hostil."));
+            player.sendSystemMessage(Component.translatable("message.mobpacified.not_hostile", mob.getName()));
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);
             return;
         }
 
         pacificar(mob);
+        mob.getPersistentData().putUUID(TAG_PACIFICADOR, player.getUUID());
 
         if (!player.getAbilities().instabuild) {
             stack.shrink(1);
         }
 
-        player.sendSystemMessage(Component.literal(nome + " foi pacificado!"));
+        player.sendSystemMessage(Component.translatable("message.mobpacified.pacified", mob.getName()));
         event.setCanceled(true);
         event.setCancellationResult(InteractionResult.SUCCESS);
     }
@@ -209,14 +235,17 @@ public class MobPacified {
         boolean seguindo = !data.getBoolean(TAG_FOLLOWING);
         data.putBoolean(TAG_FOLLOWING, seguindo);
 
-        String nome = mob.getName().getString();
         if (seguindo) {
             data.putUUID(TAG_OWNER, player.getUUID());
-            player.sendSystemMessage(Component.literal(nome + " está te seguindo!"));
+            // Pacificado antes da 5.2.0: quem mandar seguir primeiro vira o dono
+            if (!data.hasUUID(TAG_PACIFICADOR)) {
+                data.putUUID(TAG_PACIFICADOR, player.getUUID());
+            }
+            player.sendSystemMessage(Component.translatable("message.mobpacified.following", mob.getName()));
         } else {
             data.remove(TAG_OWNER);
             mob.getNavigation().stop();
-            player.sendSystemMessage(Component.literal(nome + " parou de te seguir."));
+            player.sendSystemMessage(Component.translatable("message.mobpacified.stopped_following", mob.getName()));
         }
     }
 
@@ -227,11 +256,18 @@ public class MobPacified {
     // (piglin, piglin bruto, hoglin) grava o novo alvo com Optional.of() no
     // StartAttacking, e null ali derruba o mundo. Cancelado, ele não grava nada.
     // Alvo null (alguém limpando o alvo) passa direto.
+    // Exceção: domesticado nunca mira num pacificado do mesmo dono (o lobo que
+    // ataca o que o dono ataca, ou o mob de mod que caça monstros sozinho).
     @SubscribeEvent
     public static void onTargetChange(LivingChangeTargetEvent event) {
-        if (event.getNewTarget() != null
-                && event.getEntity() instanceof Mob mob && isPacified(mob)
-                && !MenteColmeia.ehAlvoDaColmeia(mob, event.getNewTarget())) {
+        LivingEntity novoAlvo = event.getNewTarget();
+        if (novoAlvo == null) return;
+
+        if (event.getEntity() instanceof Mob mob && isPacified(mob)
+                && !MenteColmeia.ehAlvoDaColmeia(mob, novoAlvo)) {
+            event.setCanceled(true);
+        } else if (novoAlvo instanceof Mob alvo && isPacified(alvo)
+                && domesticadoDoMesmoDono(alvo, event.getEntity())) {
             event.setCanceled(true);
         }
     }
@@ -271,13 +307,17 @@ public class MobPacified {
     }
 
     // Mob pacificado nao causa dano em ninguem, exceto no alvo da mente colmeia.
-    // Ele continua levando dano normalmente, como qualquer outro mob.
+    // Ele continua levando dano normalmente, como qualquer outro mob,
+    // menos de domesticado do mesmo dono (flecha, explosão ou golpe que escapou da mira).
     @SubscribeEvent
     public static void onLivingAttack(LivingAttackEvent event) {
         Entity agressor = event.getSource().getEntity();
 
         if (agressor instanceof Mob mobAgressor && isPacified(mobAgressor)
                 && !MenteColmeia.ehAlvoDaColmeia(mobAgressor, event.getEntity())) {
+            event.setCanceled(true);
+        } else if (event.getEntity() instanceof Mob vitima && isPacified(vitima)
+                && domesticadoDoMesmoDono(vitima, agressor)) {
             event.setCanceled(true);
         }
     }
@@ -287,6 +327,14 @@ public class MobPacified {
     public static void onLivingTick(LivingTickEvent event) {
         Entity entity = event.getEntity();
         if (entity.level().isClientSide) return;
+
+        // Domesticado que já mirava no mob antes de ele ser pacificado larga o alvo
+        if (entity instanceof Mob domesticado
+                && domesticado.getTarget() instanceof Mob alvo && isPacified(alvo)
+                && domesticadoDoMesmoDono(alvo, domesticado)) {
+            domesticado.setTarget(null);
+            domesticado.getNavigation().stop();
+        }
 
         if (entity instanceof Mob mob && isPacified(mob)) {
 

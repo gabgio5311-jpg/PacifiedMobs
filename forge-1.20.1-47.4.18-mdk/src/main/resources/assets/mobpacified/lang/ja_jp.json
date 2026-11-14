@@ -1,7 +1,12 @@
 {
   "itemGroup.mobpacified": "モブ・パシファイド",
   "item.mobpacified.mystic_amulet": "神秘のお守り",
-  "item.mobpacified.mystic_amulet.tooltip.pacify": "敵対モブを右クリックすると永久に無害化する",
+  "item.mobpacified.mystic_amulet.tooltip.pacify": "敵対モブや中立モブを右クリックすると永久に無害化する",
   "item.mobpacified.mystic_amulet.tooltip.follow": "無害化したモブにスニーク+右クリックで追従を切り替え",
-  "item.mobpacified.mystic_amulet.tooltip.consumed": "使用すると消費される"
+  "item.mobpacified.mystic_amulet.tooltip.consumed": "使用すると消費される",
+  "message.mobpacified.already_pacified": "%sはすでに無害化されている。",
+  "message.mobpacified.not_hostile": "%sは敵対モブでも中立モブでもない。",
+  "message.mobpacified.pacified": "%sを無害化した！",
+  "message.mobpacified.following": "%sがついてくるようになった！",
+  "message.mobpacified.stopped_following": "%sはついてくるのをやめた。"
 }
